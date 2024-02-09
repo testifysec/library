@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package witness.dev.attestation;
+
+// Adjust this path according to your actual module path and desired package name
+option go_package = "github.com/testifysec/library";
+
+
+// Enum for the type of executor, specifying available executor types.
+enum ExecutorType {
+  EXECUTOR_TYPE_UNSPECIFIED = 0;
+  COMMAND = 1;
+}
+
+// Metadata for the workflow envelope, providing context and identification.
+message Metadata {
+  string name = 1; // Human-readable name for the workflow envelope.
+  string type = 2; // Identifier indicating the type of attestation it is designed to work with.
+}
+
+// Executor structure, defining how verification and attestation actions are performed.
+message Executor {
+  ExecutorType type = 1; // Execution mechanism type.
+  repeated string arguments = 2; // Arguments for the executor.
+}
+
+// Envelope that provides operational context for attestation payloads.
+message AttestationWorkflowEnvelope {
+  Metadata metadata = 1; // Descriptive metadata about the workflow envelope.
+  Executor verify = 2; // Details for the verification process.
+  Executor attest = 3; // Details for the attestation process.
+  // Note: The attestation payload itself is not included, emphasizing this schema's role as an operational wrapper.
+}

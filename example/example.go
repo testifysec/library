@@ -1,3 +1,9 @@
+// Generate Go code for attestationEnvelope.proto, which is in the parent directory.
+//go:generate protoc --go_out=. --go_opt=paths=source_relative --proto_path=.. ../attestationEnvelope.proto
+
+// Generate Go code for OrganizationAttestation.proto (here assumed to be named example.proto), which is in the current directory.
+//go:generate protoc --go_out=. --go_opt=paths=source_relative --proto_path=. example.proto
+
 package main
 
 import (

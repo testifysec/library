@@ -1,4 +1,4 @@
-module github.com/testifysec/example
+module github.com/testifysec/library
 
 go 1.21.5
 
