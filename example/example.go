@@ -1,9 +1,3 @@
-// Generate Go code for attestationEnvelope.proto, which is in the parent directory.
-//go:generate protoc --go_out=. --go_opt=paths=source_relative --proto_path=.. ../attestationEnvelope.proto
-
-// Generate Go code for OrganizationAttestation.proto (here assumed to be named example.proto), which is in the current directory.
-//go:generate protoc --go_out=. --go_opt=paths=source_relative --proto_path=. example.proto
-
 package main
 
 import (
@@ -11,19 +5,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/testifysec/library/base"
 	"github.com/urfave/cli/v2"
+	"google.golang.org/protobuf/proto"             // Add this import to handle Protobuf messages
+	"google.golang.org/protobuf/types/known/anypb" // For wrapping messages in Any
 )
-
-type Predicate struct {
-	Type        string       `json:"type"`
-	Attestation Organization `json:"attestation"`
-}
-
-type Organization struct {
-	Name  string `json:"name"`
-	Team  string `json:"team"`
-	Cloud string `json:"cloud" enum:"aws,azure,gcp"`
-}
 
 func main() {
 	app := &cli.App{
@@ -58,17 +44,27 @@ func main() {
 }
 
 func attest() {
-	attestation := Predicate{
-		Type: "acme.corp.io/compliance/organization/v0.1",
-		Attestation: Organization{
-			Name:  "MyOrg",
-			Team:  "MyTeam",
-			Cloud: "foobar",
+	// Use the generated OrganizationAttestation message
+	attestation := &OrganizationAttestation{
+		Name:  "MyOrg",
+		Team:  "MyTeam",
+		Cloud: CloudProvider_AWS, // Example, replace "AWS" with actual value
+	}
+
+	// Wrap the attestation in the AttestationWorkflowEnvelope
+	envelope := &base.AttestationWorkflowEnvelope{
+		Metadata: &base.Metadata{},
+		Verify:   &base.Executor{},
+		Attest: &base.Executor{
+			Type:      base.ExecutorType_COMMAND,
+			Arguments: []string{"echo", "hello"},
 		},
 	}
 
-	// Marshal the data to JSON
-	jsonData, err := json.Marshal(attestation)
+	// Marshal the envelope to JSON
+	var jsonData []byte
+	var err error
+	jsonData, err = json.Marshal(envelope)
 	if err != nil {
 		fmt.Println("Error marshaling data:", err)
 		os.Exit(1)
@@ -80,4 +76,14 @@ func attest() {
 
 func verify() {
 	fmt.Println("unimplemented")
+}
+
+// mustWrapAny is a helper function to wrap a message in a google.protobuf.Any
+// It panics if the operation fails, which is suitable for static data like this example.
+func mustWrapAny(msg proto.Message) *anypb.Any {
+	any, err := anypb.New(msg)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to wrap message in Any: %v", err))
+	}
+	return any
 }

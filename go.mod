@@ -2,7 +2,10 @@ module github.com/testifysec/library
 
 go 1.21.5
 
-require github.com/urfave/cli/v2 v2.27.1
+require (
+	github.com/urfave/cli/v2 v2.27.1
+	google.golang.org/protobuf v1.32.0
+)
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
