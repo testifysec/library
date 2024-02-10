@@ -47,6 +47,15 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:    "crd",
+				Aliases: []string{"c"},
+				Usage:   "Print the CRD",
+				Action: func(c *cli.Context) error {
+					crd()
+					return nil
+				},
+			},
 		},
 	}
 
@@ -54,6 +63,20 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func crd() {
+	// Create an instance of ExampleAttestation message.
+	exampleAttestation := &ExampleAttestation{}
+
+	// Generate CRD for the envelope
+	crd, err := generateCRDFromProto(exampleAttestation)
+	if err != nil {
+		fmt.Println("Error generating CRD:", err)
+		return
+	}
+
+	fmt.Println(crd)
 }
 
 func schema() {
@@ -187,4 +210,54 @@ func generateJsonSchemaFromProtoReflect(desc protoreflect.MessageDescriptor, sch
 	schemaStr := string(schemaJSON)
 	schemas[title] = schemaStr
 	return schemaStr, nil
+}
+
+func generateCRDFromProto(msg proto.Message) (string, error) {
+	schema, err := generateJsonSchemaFromProtoReflect(msg.ProtoReflect().Descriptor(), make(map[string]interface{}))
+	if err != nil {
+		return "", fmt.Errorf("error generating JSON schema from proto: %w", err)
+	}
+
+	crd := map[string]interface{}{
+		"version": "https://witness.dev/attestations/custom/v0.1",
+		"metadata": map[string]string{
+			"name": "organization",
+			"type": "acme.corp.io/compliance",
+		},
+		"spec": map[string]interface{}{
+			"attest": map[string]interface{}{
+				"type": "postproduct",
+				"executor": map[string]interface{}{
+					"type": "command",
+					"arguments": []string{
+						"./custom-attestor-test/custom-attestor",
+						"attest",
+					},
+				},
+			},
+			"verify": map[string]interface{}{
+				"type": "postproduct",
+				"executor": map[string]interface{}{
+					"type": "command",
+					"arguments": []string{
+						"./custom-attestor-test/custom-attestor",
+						"verify",
+					},
+				},
+			},
+			"versions": []interface{}{
+				map[string]interface{}{
+					"name":   "v0.1",
+					"schema": json.RawMessage(schema),
+				},
+			},
+		},
+	}
+
+	crdJSON, err := json.MarshalIndent(crd, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("error marshaling CRD to JSON: %w", err)
+	}
+
+	return string(crdJSON), nil
 }
