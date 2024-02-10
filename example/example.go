@@ -70,7 +70,7 @@ func crd() {
 	exampleAttestation := &ExampleAttestation{}
 
 	// Generate CRD for the envelope
-	crd, err := generateCRDFromProto(exampleAttestation)
+	crd, err := GenerateCRDFromProto(exampleAttestation)
 	if err != nil {
 		fmt.Println("Error generating CRD:", err)
 		return
@@ -212,10 +212,36 @@ func generateJsonSchemaFromProtoReflect(desc protoreflect.MessageDescriptor, sch
 	return schemaStr, nil
 }
 
-func generateCRDFromProto(msg proto.Message) (string, error) {
-	schema, err := generateJsonSchemaFromProtoReflect(msg.ProtoReflect().Descriptor(), make(map[string]interface{}))
-	if err != nil {
-		return "", fmt.Errorf("error generating JSON schema from proto: %w", err)
+// GenerateCRDFromProto creates a CRD directly from a Protobuf message, including the schema.
+func GenerateCRDFromProto(msg proto.Message) (string, error) {
+	properties := make(map[string]interface{})
+	fields := msg.ProtoReflect().Descriptor().Fields()
+
+	for i := 0; i < fields.Len(); i++ {
+		fd := fields.Get(i)
+		fieldSchema := map[string]interface{}{}
+		switch fd.Kind() {
+		case protoreflect.BoolKind:
+			fieldSchema["type"] = "boolean"
+		case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Uint32Kind,
+			protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind,
+			protoreflect.Fixed32Kind, protoreflect.Fixed64Kind, protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind:
+			fieldSchema["type"] = "integer"
+		case protoreflect.FloatKind, protoreflect.DoubleKind:
+			fieldSchema["type"] = "number"
+		case protoreflect.StringKind:
+			fieldSchema["type"] = "string"
+		case protoreflect.BytesKind:
+			fieldSchema["type"] = "string" // Consider specifying format as "byte" for base64 encoded data
+		case protoreflect.EnumKind:
+			// Assuming enum values should be represented as strings
+			fieldSchema["type"] = "string"
+			// Optionally, add "enum" field to list possible values
+		case protoreflect.MessageKind, protoreflect.GroupKind:
+			// This simplified example assumes sub-messages/groups are not nested.
+			fieldSchema["type"] = "object"
+		}
+		properties[string(fd.Name())] = fieldSchema
 	}
 
 	crd := map[string]interface{}{
@@ -247,8 +273,12 @@ func generateCRDFromProto(msg proto.Message) (string, error) {
 			},
 			"versions": []interface{}{
 				map[string]interface{}{
-					"name":   "v0.1",
-					"schema": json.RawMessage(schema),
+					"name": "v0.1",
+					"schema": map[string]interface{}{
+						"type":       "object",
+						"properties": properties,
+						// Add required fields, enums, or other constraints as needed
+					},
 				},
 			},
 		},
@@ -256,7 +286,7 @@ func generateCRDFromProto(msg proto.Message) (string, error) {
 
 	crdJSON, err := json.MarshalIndent(crd, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("error marshaling CRD to JSON: %w", err)
+		return "", fmt.Errorf("failed to marshal CRD to JSON: %w", err)
 	}
 
 	return string(crdJSON), nil
