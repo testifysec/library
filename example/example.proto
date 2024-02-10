@@ -11,7 +11,7 @@ enum CloudProvider {
   AZURE = 3;
 }
 
-message OrganizationAttestation {
+message ExampleAttestation {
   string name = 1;
   string team = 2;
   CloudProvider cloud = 3;

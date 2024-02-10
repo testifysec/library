@@ -3,6 +3,7 @@ syntax = "proto3";
 package witness.dev.attestation;
 
 import "google/protobuf/any.proto"; // Import the definitions required for the Any type
+import "google/protobuf/struct.proto";
 
 option go_package = "github.com/testifysec/library/base;base";
 
@@ -25,5 +26,6 @@ message AttestationWorkflowEnvelope {
   Metadata metadata = 1;
   Executor verify = 2;
   Executor attest = 3;
-  google.protobuf.Any payload = 4; // Field to hold any attestation payload
+  google.protobuf.Struct schema = 4;
+  google.protobuf.Any payload = 5; // Field to hold any attestation payload
 }
