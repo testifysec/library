@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	reflect "reflect"
 
 	"github.com/testifysec/library/base"
 	"github.com/urfave/cli/v2"
-	"google.golang.org/protobuf/proto"             // Add this import to handle Protobuf messages
+	"google.golang.org/protobuf/proto" // Add this import to handle Protobuf messages
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb" // For wrapping messages in Any
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -57,9 +57,19 @@ func main() {
 }
 
 func schema() {
+	// Create an instance of ExampleAttestation message.
+	exampleAttestation := &ExampleAttestation{}
 
-	generateSchema(&ExampleAttestation{})
+	// Wrap the ExampleAttestation message in an Any type.
 
+	// Generate JSON schema for the envelope
+	jsonSchema, err := generateJsonSchemaFromProto(exampleAttestation)
+	if err != nil {
+		fmt.Println("Error generating JSON schema:", err)
+		return
+	}
+
+	fmt.Println(jsonSchema)
 }
 
 func attest() {
@@ -105,35 +115,76 @@ func mustWrapAny(msg proto.Message) *anypb.Any {
 	return any
 }
 
-func generateSchema(msg proto.Message) (string, error) {
-	// This is a very simplified and static approach to generate a JSON Schema for demonstration.
-	// A real implementation would need to inspect `msg` dynamically using protobuf reflection.
+func generateJsonSchemaFromProto(msg proto.Message) (string, error) {
+	return generateJsonSchemaFromProtoReflect(msg.ProtoReflect().Descriptor(), make(map[string]interface{}))
+}
 
-	schema := map[string]interface{}{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title":   reflect.TypeOf(msg).Elem().Name(),
-		"type":    "object",
-		"properties": map[string]interface{}{
-			// Assuming these are the fields in your attestation protobuf message.
-			// Replace these with dynamic inspection of `msg` for a real implementation.
-			"name": map[string]string{
-				"type": "string",
-			},
-			"age": map[string]string{
-				"type": "integer",
-			},
-		},
-		// Assuming the `name` field is required.
-		"required": []string{"name"},
+func generateJsonSchemaFromProtoReflect(desc protoreflect.MessageDescriptor, schemas map[string]interface{}) (string, error) {
+	title := string(desc.FullName())
+	if schema, ok := schemas[title]; ok {
+		return schema.(string), nil
 	}
 
-	// You would wrap this schema inside the structure of AttestationWorkflowEnvelope's schema
-	// For brevity, this example focuses on generating schema for the message itself.
+	properties := map[string]interface{}{}
+	for i := 0; i < desc.Fields().Len(); i++ {
+		fd := desc.Fields().Get(i)
+		fieldName := string(fd.Name())
+		fieldSchema := map[string]interface{}{}
 
-	jsonSchema, err := json.MarshalIndent(schema, "", "  ")
+		switch fd.Kind() {
+		case protoreflect.BoolKind:
+			fieldSchema["type"] = "boolean"
+		case protoreflect.EnumKind, protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Uint32Kind,
+			protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind:
+			fieldSchema["type"] = "integer"
+		case protoreflect.Fixed32Kind, protoreflect.Fixed64Kind, protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind:
+			fieldSchema["type"] = "number"
+		case protoreflect.FloatKind, protoreflect.DoubleKind:
+			fieldSchema["type"] = "number"
+		case protoreflect.StringKind:
+			fieldSchema["type"] = "string"
+		case protoreflect.BytesKind:
+			fieldSchema["type"] = "string"
+		case protoreflect.MessageKind, protoreflect.GroupKind:
+			if fd.Message().FullName() == "google.protobuf.Timestamp" {
+				fieldSchema["type"] = "string"
+				fieldSchema["format"] = "date-time"
+			} else {
+				nestedSchema, err := generateJsonSchemaFromProtoReflect(fd.Message(), schemas)
+				if err != nil {
+					return "", err
+				}
+				var nestedSchemaObj map[string]interface{}
+				if err := json.Unmarshal([]byte(nestedSchema), &nestedSchemaObj); err != nil {
+					return "", err
+				}
+				fieldSchema = nestedSchemaObj
+			}
+		}
+
+		if fd.IsList() {
+			properties[fieldName] = map[string]interface{}{
+				"type":  "array",
+				"items": fieldSchema,
+			}
+		} else {
+			properties[fieldName] = fieldSchema
+		}
+	}
+
+	schema := map[string]interface{}{
+		"$schema":    "http://json-schema.org/draft-07/schema#",
+		"title":      title,
+		"type":       "object",
+		"properties": properties,
+	}
+
+	schemaJSON, err := json.MarshalIndent(schema, "", "  ")
 	if err != nil {
 		return "", err
 	}
 
-	return string(jsonSchema), nil
+	schemaStr := string(schemaJSON)
+	schemas[title] = schemaStr
+	return schemaStr, nil
 }
