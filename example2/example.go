@@ -28,13 +28,7 @@ func main() {
 	myPlugin := &MyPlugin{}
 	protoMsg := &ExampleAttestation{} // Example usage of a Protobuf message for the schema/CRD
 
-	// Use SDK to register attest and verify commands
-	sdk.RegisterAttestCommand(app, myPlugin) // Assuming similar functions exist for attest and verify
-	sdk.RegisterVerifyCommand(app, myPlugin)
-
-	// Register schema and CRD commands with minimal boilerplate
-	sdk.RegisterSchemaCommand(app, protoMsg)
-	sdk.RegisterCRDCommand(app, protoMsg)
+	sdk.RegisterCommands(app, protoMsg, myPlugin)
 
 	if err := app.Run(os.Args); err != nil {
 		panic(err)

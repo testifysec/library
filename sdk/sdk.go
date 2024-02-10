@@ -8,7 +8,7 @@ import (
 )
 
 // RegisterSchemaCommand registers a CLI command for generating a JSON schema.
-func RegisterSchemaCommand(app *cli.App, protoMsg proto.Message) {
+func registerSchemaCommand(app *cli.App, protoMsg proto.Message) {
 	app.Commands = append(app.Commands, &cli.Command{
 		Name:  "schema",
 		Usage: "Generate the schema",
@@ -24,7 +24,7 @@ func RegisterSchemaCommand(app *cli.App, protoMsg proto.Message) {
 }
 
 // RegisterCRDCommand registers a CLI command for generating a CRD.
-func RegisterCRDCommand(app *cli.App, protoMsg proto.Message) {
+func registerCRDCommand(app *cli.App, protoMsg proto.Message) {
 	app.Commands = append(app.Commands, &cli.Command{
 		Name:  "crd",
 		Usage: "Generate the CRD",
@@ -39,7 +39,7 @@ func RegisterCRDCommand(app *cli.App, protoMsg proto.Message) {
 	})
 }
 
-func RegisterAttestCommand(app *cli.App, p plugin.Plugin) {
+func registerAttestCommand(app *cli.App, p plugin.Plugin) {
 	app.Commands = append(app.Commands, &cli.Command{
 		Name:   "attest",
 		Usage:  "Execute the attest action",
@@ -47,7 +47,7 @@ func RegisterAttestCommand(app *cli.App, p plugin.Plugin) {
 	})
 }
 
-func RegisterVerifyCommand(app *cli.App, p plugin.Plugin) {
+func registerVerifyCommand(app *cli.App, p plugin.Plugin) {
 	app.Commands = append(app.Commands, &cli.Command{
 		Name:   "verify",
 		Usage:  "Execute the verify action",
@@ -63,4 +63,12 @@ func GenerateJSONSchema(protoMsg proto.Message) (string, error) {
 func GenerateCRD(protoMsg proto.Message) (string, error) {
 	// Implement your logic here
 	return "", nil
+}
+
+// single register function
+func RegisterCommands(app *cli.App, protoMsg proto.Message, p plugin.Plugin) {
+	registerSchemaCommand(app, protoMsg)
+	registerCRDCommand(app, protoMsg)
+	registerAttestCommand(app, p)
+	registerVerifyCommand(app, p)
 }
