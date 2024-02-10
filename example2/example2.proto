@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package witness.dev.attestation.example;
+
+option go_package = "github.com/testifysec/library/example2;main";
+
+enum CloudProvider {
+  CLOUD_PROVIDER_UNSPECIFIED = 0;
+  AWS = 1;
+  GCP = 2;
+  AZURE = 3;
+}
+
+message ExampleAttestation {
+  string name = 1;
+  string team = 2;
+  CloudProvider cloud = 3;
+}

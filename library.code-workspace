@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../witness-poc"
+		},
+		{
+			"path": "../go-witness-poc"
+		}
+	],
+	"settings": {}
+}
